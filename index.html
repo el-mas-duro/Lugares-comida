@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis Lugares de Comida</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0B3C43" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Map (full screen) -->
+  <div id="map"></div>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <span class="topbar-title">🗺️ Mis Lugares</span>
+    <div class="topbar-actions">
+      <input type="text" id="search-input" placeholder="Buscar lugar…" autocomplete="off" />
+      <select id="filter-type">
+        <option value="">Todos</option>
+        <option value="tacos">Tacos</option>
+        <option value="desayunos">Desayunos</option>
+        <option value="hamburguesa">Hamburguesa</option>
+        <option value="tortas">Tortas</option>
+        <option value="mariscos">Mariscos</option>
+        <option value="postres">Postres</option>
+        <option value="bebidas">Bebidas</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Theme switcher -->
+  <div class="theme-switcher" id="theme-switcher">
+    <button class="theme-btn" data-theme="positron" title="Positron">☀️ Positron</button>
+    <button class="theme-btn" data-theme="voyager" title="Voyager">🌍 Voyager</button>
+    <button class="theme-btn" data-theme="dark-matter" title="Dark Matter">🌑 Dark</button>
+  </div>
+
+  <!-- Floating buttons -->
+  <div class="fab-group">
+    <button class="fab fab-secondary" id="btn-list" title="Ver lista">
+      ☰
+      <span class="fab-tooltip">Ver lista</span>
+    </button>
+    <button class="fab fab-primary" id="btn-locate" title="Mi ubicación">
+      📍
+      <span class="fab-tooltip">Mi ubicación</span>
+    </button>
+  </div>
+
+  <!-- Sidebar / list panel -->
+  <aside id="sidebar" class="sidebar hidden">
+    <div class="sidebar-header">
+      <span>Mis lugares (<span id="count">0</span>)</span>
+      <div class="sidebar-header-actions">
+        <select id="sort-select" title="Ordenar">
+          <option value="newest">Más recientes</option>
+          <option value="rating">Mejor calificados</option>
+          <option value="name">A → Z</option>
+        </select>
+        <button id="btn-export" title="Exportar JSON">⬇️</button>
+        <button id="btn-import" title="Importar JSON">⬆️</button>
+        <input type="file" id="import-file" accept=".json" class="hidden" />
+        <button id="btn-close-sidebar">✕</button>
+      </div>
+    </div>
+    <ul id="places-list"></ul>
+  </aside>
+
+  <!-- Add/Edit modal -->
+  <div id="modal-overlay" class="hidden">
+    <div class="modal">
+      <h2 id="modal-title">Nuevo lugar</h2>
+      <form id="place-form">
+        <input type="hidden" id="f-id" />
+        <input type="hidden" id="f-lat" />
+        <input type="hidden" id="f-lng" />
+
+        <label>Nombre / como lo conoces
+          <input type="text" id="f-name" required placeholder="El señor de los tamales" />
+        </label>
+
+        <label>Tipo de comida
+          <select id="f-type" required>
+            <option value="">-- elige --</option>
+            <option value="tacos">🌮 Tacos</option>
+            <option value="desayunos">🍳 Desayunos</option>
+            <option value="hamburguesa">🍔 Hamburguesa</option>
+            <option value="tortas">🥪 Tortas</option>
+            <option value="mariscos">🦐 Mariscos</option>
+            <option value="postres">🍰 Postres</option>
+            <option value="bebidas">🧃 Bebidas</option>
+            <option value="otro">📍 Otro</option>
+          </select>
+        </label>
+
+        <label>Qué pedir / qué estuvo bueno
+          <textarea id="f-notes" rows="2" placeholder="Los de canasta de frijol…"></textarea>
+        </label>
+
+        <label>Calificación
+          <div class="stars-row" id="stars-row">
+            <span class="star" data-v="1">★</span>
+            <span class="star" data-v="2">★</span>
+            <span class="star" data-v="3">★</span>
+            <span class="star" data-v="4">★</span>
+            <span class="star" data-v="5">★</span>
+          </div>
+          <input type="hidden" id="f-rating" value="0" />
+        </label>
+
+        <label>Horario / días
+          <input type="text" id="f-schedule" placeholder="Lun–Vie 7–11am" />
+        </label>
+
+        <label>Precio aproximado
+          <input type="text" id="f-price" placeholder="$30–50 por taco" />
+        </label>
+
+        <label>Link (Google Maps, Waze, etc.)
+          <input type="url" id="f-url" placeholder="https://maps.google.com/…" />
+        </label>
+
+        <label>Etiquetas (separadas por coma)
+          <input type="text" id="f-tags" placeholder="favorito, económico, cerca del trabajo" />
+        </label>
+
+        <label>Foto (opcional)
+          <input type="file" id="f-photo" accept="image/*" capture="environment" />
+          <img id="f-photo-preview" class="photo-preview hidden" alt="preview" />
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-delete" class="btn-danger hidden">Eliminar</button>
+          <button type="button" id="btn-cancel" class="btn-ghost">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- E8: Lightbox -->
+  <div id="lightbox" class="hidden">
+    <img id="lightbox-img" alt="Foto ampliada" />
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
